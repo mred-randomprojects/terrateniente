@@ -133,7 +133,7 @@ bun run build
 
 - **Todo en una pantalla, sin servidor**: menú → *Jugar en esta pantalla*,
   marcá *Sin tiempo para decidir* y repartí 3 escrituras por jugador. Con eso
-  podés probar canjes (`C`), construcciones, hipotecas y remates desde el
+  podés probar canjes (`N`), construcciones, hipotecas y remates desde el
   primer turno, sin apuro. En desarrollo, `window.__terrateniente.getGame()` /
   `setGame(estado)` en la consola permiten inspeccionar o reemplazar el
   estado de la partida local.
@@ -148,8 +148,9 @@ bun run build
   distinto es una silla distinta. Así se ve la propuesta de canje de un lado
   y la respuesta del otro.
 
-Cada push a `main` despliega el cliente a GitHub Pages; el servidor de mesas
-se despliega al droplet con `./deploy.sh` (ver `deploy/README.md`).
+Cada push a `main` despliega el cliente a GitHub Pages y el servidor de mesas
+al droplet (ver `deploy/README.md`); `./deploy.sh` queda para redesplegar el
+servidor a mano.
 
 ## Estructura
 
