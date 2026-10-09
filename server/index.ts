@@ -28,6 +28,7 @@ import {
   newGame,
   pruneIdle,
   renamePlayer,
+  roomMessage,
   setComposing,
   setShaking,
   startGame,
@@ -74,11 +75,27 @@ function send(ws: Socket, message: ServerMessage): void {
   }
 }
 
+function sendText(ws: Socket, text: string): void {
+  try {
+    ws.send(text);
+  } catch (error) {
+    console.warn("send failed", error);
+  }
+}
+
 function broadcast(room: Room): void {
   const now = Date.now();
   const view = toView(room, now);
+  // Serialized once for the whole table: only `you` differs between sockets.
+  let viewJson: string;
+  try {
+    viewJson = JSON.stringify(view);
+  } catch (error) {
+    console.warn("send failed", error);
+    return;
+  }
   for (const ws of socketsByRoom.get(room.code) ?? []) {
-    if (ws.data.playerId) send(ws, { type: "room", you: ws.data.playerId, room: view });
+    if (ws.data.playerId) sendText(ws, roomMessage(ws.data.playerId, viewJson));
   }
 }
 
@@ -246,6 +263,8 @@ const server = Bun.serve<SocketData>({
     return index();
   },
   websocket: {
+    // Room messages are JSON that repeats itself (the whole game, log included): compressed when the browser offers it.
+    perMessageDeflate: true,
     open() {
       // Nothing until the client says who it is.
     },

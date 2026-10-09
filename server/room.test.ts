@@ -16,6 +16,7 @@ import {
   markDisconnected,
   newGame,
   pruneIdle,
+  roomMessage,
   setComposing,
   setShaking,
   startGame,
@@ -174,6 +175,16 @@ describe("playing", () => {
     expect(room.shakingPlayerId).toBeNull();
   });
 
+  it("returns the same room for a shake that changes nothing, so it is not broadcast", () => {
+    const still = playing();
+    expect(setShaking(still, ana.playerId, false)).toBe(still);
+    const shaking = setShaking(still, ana.playerId, true);
+    expect(shaking).not.toBe(still);
+    expect(setShaking(shaking, ana.playerId, true)).toBe(shaking);
+    expect(setShaking(shaking, beto.playerId, false)).toBe(shaking);
+    expect(setShaking(shaking, ana.playerId, false).shakingPlayerId).toBeNull();
+  });
+
   it("fires the default when the deadline passes", () => {
     let room = playing();
     expect(fireDeadline(room, NOW + 1_000, [1, 2])).toBe(room);
@@ -273,6 +284,14 @@ describe("what the clients see", () => {
     expect([...shown.suerte, ...shown.yeta].filter((id) => cardIds.has(id))).toEqual([]);
     // The server keeps the real order to draw from.
     expect(decks.suerte.every((id) => cardIds.has(id))).toBe(true);
+  });
+
+  it("builds each socket's room message around one serialized view", () => {
+    const view = toView(playing(), NOW);
+    const viewJson = JSON.stringify(view);
+    for (const you of [ana.playerId, beto.playerId, 'odd"id\\-0001']) {
+      expect(roomMessage(you, viewJson)).toBe(JSON.stringify({ type: "room", you, room: view }));
+    }
   });
 });
 

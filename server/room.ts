@@ -187,10 +187,13 @@ export function setComposing(room: Room, playerId: string, composing: boolean, d
   return { ...room, composingPlayerId: playerId, tradeDraft };
 }
 
+/** Returns the same room when the hands were already doing that, so the server need not broadcast. */
 export function setShaking(room: Room, playerId: string, shaking: boolean): Room {
   if (!room.game) return room;
   if (allowedPlayerFor(room.game, { type: "rollDice" }) !== playerId) return room;
-  return { ...room, shakingPlayerId: shaking ? playerId : null };
+  const shakingPlayerId = shaking ? playerId : null;
+  if (room.shakingPlayerId === shakingPlayerId) return room;
+  return { ...room, shakingPlayerId };
 }
 
 function afterChange(room: Room, game: GameState, action: ActionRequest["type"] | null, actorId: string | null, now: number): Room {
@@ -285,6 +288,14 @@ export function toView(room: Room, now: number): RoomView {
     kickVote: room.kickVote,
     now,
   };
+}
+
+/**
+ * The `room` message for one socket, around the view serialized once for the
+ * whole table: the same JSON as `JSON.stringify({ type: "room", you, room })`.
+ */
+export function roomMessage(you: string, viewJson: string): string {
+  return `{"type":"room","you":${JSON.stringify(you)},"room":${viewJson}}`;
 }
 
 /**
