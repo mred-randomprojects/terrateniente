@@ -384,12 +384,12 @@ function PromptCard({ state, you, deadline, dispatch, onNewGame, onManage, onTra
           <div className="trade-sides">
             <div className="trade-side">
               <h4>{from.name} da</h4>
-              <OfferItems state={state} offer={trade.gives} receiver={to.name} />
+              <OfferItems state={state} offer={trade.gives} />
             </div>
             <div className="trade-arrow">⇄</div>
             <div className="trade-side">
               <h4>{to.name} da</h4>
-              <OfferItems state={state} offer={trade.receives} receiver={from.name} />
+              <OfferItems state={state} offer={trade.receives} />
             </div>
           </div>
           {!check.ok && <p className="trade-problem">{check.reason}</p>}
