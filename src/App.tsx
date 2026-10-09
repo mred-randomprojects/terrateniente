@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sfx } from "./audio/sfx";
 import type { GameSetup, GameState, NewPlayer } from "./game";
@@ -7,6 +8,7 @@ import { getLastRoom, getPlayerId, getSavedName, saveLastRoom, saveName } from "
 import { cameraTracker, pawnTracker } from "./scene/pawnTracker";
 import { useLocalSession } from "./session/useLocalSession";
 import { useOnlineSession, useRoomClient } from "./session/useOnlineSession";
+import { ErrorBoundary } from "./ui/ErrorBoundary";
 import { Lobby } from "./ui/Lobby";
 import { Menu } from "./ui/Menu";
 import type { Settings } from "./ui/settings";
@@ -189,6 +191,25 @@ export default function App() {
   );
 }
 
+/**
+ * What replaces the table when it crashes while drawing. The session lives
+ * above the boundary (the hot-seat game in LocalGame, the room on the
+ * server), so retrying remounts only the table and the game goes on.
+ */
+function tableCrashed(_error: Error, retry: () => void): ReactNode {
+  return (
+    <div className="setup" role="alert">
+      <div className="setup-card">
+        <h1>Algo falló</h1>
+        <p className="hint">La partida sigue: reintentá para volver a la mesa.</p>
+        <button type="button" className="primary" onClick={retry}>
+          Reintentar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 interface LocalGameProps {
   readonly players: readonly NewPlayer[];
   readonly setup: GameSetup;
@@ -206,7 +227,11 @@ function LocalGame({ players, setup, settings, onSettings, onLeave }: LocalGameP
       delete window.__terrateniente;
     };
   }, [session]);
-  return <GameScreen session={session} settings={settings} onSettings={onSettings} canRestart />;
+  return (
+    <ErrorBoundary fallback={tableCrashed}>
+      <GameScreen session={session} settings={settings} onSettings={onSettings} canRestart />
+    </ErrorBoundary>
+  );
 }
 
 interface OnlineGameProps {
@@ -224,5 +249,9 @@ interface OnlineGameProps {
 function OnlineGame({ room, you, status, clockOffset, error, clearError, client, settings, onSettings }: OnlineGameProps) {
   if (!client) throw new Error("OnlineGame needs a client");
   const session = useOnlineSession({ client, room, you, status, clockOffset, error, clearError });
-  return <GameScreen session={session} settings={settings} onSettings={onSettings} canRestart={room.hostId === you} />;
+  return (
+    <ErrorBoundary fallback={tableCrashed}>
+      <GameScreen session={session} settings={settings} onSettings={onSettings} canRestart={room.hostId === you} />
+    </ErrorBoundary>
+  );
 }
