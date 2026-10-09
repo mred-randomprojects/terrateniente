@@ -68,12 +68,34 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v5
 
+  # Builds the room server image and boots it the way docker-compose.yml runs
+  # it, before the droplet replaces the live container: an import the image
+  # does not carry, or a dependency that breaks the server, fails here instead
+  # of crash-looping the live one.
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build the server image
+        run: docker build -t terrateniente:smoke .
+
+      - name: Boot it and wait for /health
+        run: |
+          docker run -d --name terrateniente-smoke -p 9902:9902 -e PORT=9902 -e ROOMS_FILE=/data/rooms.json -v terrateniente-data:/data terrateniente:smoke
+          curl -sf --retry 15 --retry-delay 2 --retry-all-errors http://localhost:9902/terrateniente/health
+
+      - name: Server log
+        if: always()
+        run: docker logs terrateniente-smoke || true
+
   # The room server: the droplet pulls main and rebuilds its image (seconds,
   # only changed layers). Skipped, with a warning, until the DEPLOY_SSH_KEY secret exists; see
   # deploy/README.md. The key is pinned to one forced command on the droplet.
   server:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, smoke]
     env:
       DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
       DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
