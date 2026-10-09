@@ -1,7 +1,7 @@
 # Terrateniente room server. The client lives on GitHub Pages, so the image only
 # carries the server, the engine it runs and zod: no Vite build, which keeps
 # the build light enough for the droplet itself (see deploy/README.md).
-FROM oven/bun:1-slim
+FROM oven/bun:1.3.14-slim
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=9902
