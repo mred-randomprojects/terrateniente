@@ -256,13 +256,26 @@ export function voteKick(room: Room, voterId: string, targetId: string, yes: boo
   return touch({ ...room, kickVote: vote }, now);
 }
 
+/** What a client gets in place of each card still in a deck. */
+export const HIDDEN_CARD = "?";
+
+/**
+ * The game as the clients see it: the decks keep their size but not their
+ * order, which would tell anyone reading the socket the next card each player
+ * draws. Clients only count them; the engine draws on the server.
+ */
+function publicGame(game: GameState): GameState {
+  const hide = (deck: readonly string[]): string[] => deck.map(() => HIDDEN_CARD);
+  return { ...game, decks: { suerte: hide(game.decks.suerte), yeta: hide(game.decks.yeta) } };
+}
+
 export function toView(room: Room, now: number): RoomView {
   return {
     code: room.code,
     hostId: room.hostId,
     status: room.status,
     players: room.players.map(({ playerId, name, token, color, connected }) => ({ playerId, name, token, color, connected })),
-    game: room.game,
+    game: room.game && publicGame(room.game),
     seq: room.seq,
     lastAction: room.lastAction,
     lastActorId: room.lastActorId,

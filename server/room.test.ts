@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DECISION_SECONDS, DEFAULT_SETUP } from "../src/game";
+import { ALL_CARDS, DECISION_SECONDS, DEFAULT_SETUP } from "../src/game";
 import { parseClientMessage } from "../src/net/protocol";
 import type { Room } from "./room";
 import {
@@ -256,6 +256,23 @@ describe("playing", () => {
     expect(room.status).toBe("lobby");
     expect(room.game).toBeNull();
     expect(toView(room, NOW).players).toHaveLength(2);
+  });
+});
+
+describe("what the clients see", () => {
+  it("counts the cards left in each deck without revealing their order", () => {
+    const room = playing();
+    const decks = room.game?.decks;
+    const shown = toView(room, NOW).game?.decks;
+    if (!decks || !shown) throw new Error("no game");
+    expect(decks.suerte.length).toBeGreaterThan(0);
+    expect(decks.yeta.length).toBeGreaterThan(0);
+    expect(shown.suerte).toHaveLength(decks.suerte.length);
+    expect(shown.yeta).toHaveLength(decks.yeta.length);
+    const cardIds = new Set(ALL_CARDS.map((card) => card.id));
+    expect([...shown.suerte, ...shown.yeta].filter((id) => cardIds.has(id))).toEqual([]);
+    // The server keeps the real order to draw from.
+    expect(decks.suerte.every((id) => cardIds.has(id))).toBe(true);
   });
 });
 
