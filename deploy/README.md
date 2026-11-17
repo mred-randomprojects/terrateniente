@@ -1,7 +1,9 @@
 # Deploy
 
-The room server runs on the same DigitalOcean droplet as Piñas Cruzadas and
-is reached through its Caddy at **https://pistasjug.ar/terrateniente/**.
+The room server runs on the same host as Piñas Cruzadas (an OVH VPS since
+November 2026, user `debian`, SSH alias `pinas-cruzadas`; see
+`pinas-cruzadas/HOSTING.md`) and is reached through its Caddy at
+**https://pistasjug.ar/terrateniente/**.
 
 ## One-time: route the path in Piñas' Caddyfile
 
@@ -18,16 +20,16 @@ pistasjug.ar {
 }
 ```
 
-Then reload Caddy on the droplet. The Caddyfile is a single-file bind mount,
+Then reload Caddy on the host. The Caddyfile is a single-file bind mount,
 so after `scp` (which replaces the inode) the container still sees the old
 file until it restarts; feed the new config through stdin instead:
 
 ```bash
-scp Caddyfile pinas-cruzadas:/root/pinas-cruzadas/Caddyfile
-ssh pinas-cruzadas 'cd /root/pinas-cruzadas && docker compose exec -T caddy caddy validate --config /dev/stdin --adapter caddyfile < Caddyfile && docker compose exec -T caddy caddy reload --config /dev/stdin --adapter caddyfile < Caddyfile'
+scp Caddyfile pinas-cruzadas:/home/debian/pinas-cruzadas/Caddyfile
+ssh pinas-cruzadas 'cd /home/debian/pinas-cruzadas && docker compose exec -T caddy caddy validate --config /dev/stdin --adapter caddyfile < Caddyfile && docker compose exec -T caddy caddy reload --config /dev/stdin --adapter caddyfile < Caddyfile'
 ```
 
-(Done once on 2026-09-19; `pinas-cruzadas/deploy.sh` re-uploads the same
+(Done once on 2026-09-19 on the droplet; `pinas-cruzadas/deploy.sh` re-uploads the same
 Caddyfile on Piñas deploys, so keep the block in that repo.)
 
 The `terrateniente` container joins the `pinas-cruzadas_default` network (see
@@ -35,10 +37,10 @@ The `terrateniente` container joins the `pinas-cruzadas_default` network (see
 
 ## Every release
 
-The droplet builds the image itself from a checkout of `main` in
-`/root/terrateniente`: the image holds only `server/`, `src/game`, `src/net` and
-zod (no Vite build; the client is on GitHub Pages), so it builds in seconds
-within the droplet's ~450 MB of RAM. `pistasjug.ar/terrateniente/` redirects to
+The host builds the image itself from a checkout of `main` in
+`/home/debian/terrateniente` (cloned over https: the repo is public): the image
+holds only `server/`, `src/game`, `src/net` and zod (no Vite build; the client is
+on GitHub Pages), so it builds in seconds. `pistasjug.ar/terrateniente/` redirects to
 the Pages site.
 
 ```bash
@@ -58,20 +60,23 @@ file is deleted once read, and ignored if older than 30 minutes. A game saved
 by an older engine is restored as is; if the engine changed in a way that
 breaks it, that room alone is closed (logged as "its clock failed").
 
-### Automatic on push (set up 2026-09-27)
+### Automatic on push (set up 2026-09-27, moved to OVH 2026-11)
 
 The `server` job in `.github/workflows/deploy.yml` does the same after the
-tests pass, once two repo secrets exist. Its key can only run the deploy:
+tests pass, once two repo secrets and the `DEPLOY_HOST` repo variable (the
+host's IP) exist. Its key can only run the deploy:
 
 ```bash
 ssh-keygen -t ed25519 -N "" -C terrateniente-deploy -f /tmp/terrateniente_deploy
-ssh pinas-cruzadas "echo 'command=\"cd /root/terrateniente && git fetch -q origin main && git reset -q --hard origin/main && exec deploy/remote.sh\",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty $(cat /tmp/terrateniente_deploy.pub)' >> ~/.ssh/authorized_keys"
+IP=<the VPS IP>
+ssh pinas-cruzadas "echo 'command=\"cd /home/debian/terrateniente && git fetch -q origin main && git reset -q --hard origin/main && exec deploy/remote.sh\",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty $(cat /tmp/terrateniente_deploy.pub)' >> ~/.ssh/authorized_keys"
 gh secret set DEPLOY_SSH_KEY < /tmp/terrateniente_deploy
-ssh-keyscan -t ed25519 167.172.140.176 | gh secret set DEPLOY_KNOWN_HOSTS
+ssh-keyscan -t ed25519 $IP | gh secret set DEPLOY_KNOWN_HOSTS
+gh variable set DEPLOY_HOST --body $IP
 rm /tmp/terrateniente_deploy /tmp/terrateniente_deploy.pub
 ```
 
-Anyone who can push to `main` can then run code on the droplet (through
+Anyone who can push to `main` can then run code on the host (through
 `deploy/remote.sh`); that is the trade-off for never forgetting a deploy.
 
 Health: `curl https://pistasjug.ar/terrateniente/health` → `{"ok":true,"rooms":N}`.

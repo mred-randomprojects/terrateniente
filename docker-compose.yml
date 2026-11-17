@@ -1,6 +1,6 @@
-# Runs next to Piñas Cruzadas on the droplet: same Docker network, so the
+# Runs next to Piñas Cruzadas on the server: same Docker network, so the
 # existing Caddy can reverse-proxy pistasjug.ar/terrateniente/* to this container.
-# Built on the droplet from a checkout of this repo (deploy/remote.sh).
+# Built on the server from a checkout of this repo (deploy/remote.sh).
 name: terrateniente
 
 services:
